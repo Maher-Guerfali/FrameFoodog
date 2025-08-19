@@ -50,7 +50,7 @@ export function NutritionRing({
       };
 
       requestAnimationFrame(animate);
-    }, 1000);
+    }, 400);
 
     // Cleanup function to prevent memory leaks
     return () => clearTimeout(timer);
