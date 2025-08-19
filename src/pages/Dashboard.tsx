@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NutritionRing } from "@/components/NutritionRing";
-import { Plus, Edit3, Minus, User, Flame, Beef, Wheat, Droplets, Home, BarChart3, Settings, Loader2 } from "lucide-react";
+import { Plus, Edit3, Minus, Flame, Beef, Wheat, Droplets, Settings, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
 
@@ -421,28 +421,6 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-sm border-t border-border shadow-strong">
-        <div className="max-w-md mx-auto px-4 py-2">
-          <div className="flex justify-around">
-            <Button variant="ghost" size="sm" className="flex flex-col items-center gap-1 text-primary">
-              <Home className="w-5 h-5" />
-              <span className="text-xs">Home</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="flex flex-col items-center gap-1 text-muted-foreground">
-              <BarChart3 className="w-5 h-5" />
-              <span className="text-xs">Stats</span>
-            </Button>
-            <Link to="/profile">
-              <Button variant="ghost" size="sm" className="flex flex-col items-center gap-1 text-muted-foreground">
-                <User className="w-5 h-5" />
-                <span className="text-xs">Profile</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
   );
