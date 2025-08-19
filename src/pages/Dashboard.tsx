@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NutritionRing } from "@/components/NutritionRing";
-import { Plus, Edit3, Minus, Flame, Beef, Wheat, Droplets, Settings, Loader2 } from "lucide-react";
+import { Plus, Edit3, Minus, User, Flame, Beef, Wheat, Droplets, Home, BarChart3, Settings, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
 
@@ -40,9 +40,9 @@ export default function Dashboard() {
   // State for weekly intake data
   const [weeklyIntake, setWeeklyIntake] = useState<Array<IntakeData>>([]);
   
-  // Fetch user data including daily and weekly intake
+  // Fetch user's intake data
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchIntakeData = async () => {
       if (!userId) {
         console.error('No user ID found in localStorage');
         toast({
@@ -57,39 +57,38 @@ export default function Dashboard() {
         setIsLoading(true);
         const today = new Date().toISOString().split('T')[0];
         
-        // Fetch user data which includes both daily and weekly intake
-        const response = await fetch(`${API_URL}/api/users/${userId}`);
+        // Fetch today's intake
+        const [todayResponse, weeklyResponse] = await Promise.all([
+          fetch(`${API_URL}/api/users/${userId}`),
+          fetch(`${API_URL}/api/users/${userId}/weekly`)
+        ]);
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch user data');
+        if (!todayResponse.ok || !weeklyResponse.ok) {
+          throw new Error('Failed to fetch intake data');
         }
         
-        const data = await response.json();
-        console.log('User data received:', data);
+        const [todayData, weeklyData] = await Promise.all([
+          todayResponse.json(),
+          weeklyResponse.json()
+        ]);
         
-        // Set today's intake if available
-        if (data.dailyIntakeToday) {
+        if (todayData.dailyIntakeToday) {
           setTodayIntake(prev => ({
             ...prev,
-            ...data.dailyIntakeToday,
+            ...todayData.dailyIntakeToday,
             date: today
           }));
         }
         
-        // Set weekly intake if available
-        if (data.weeklyIntakeThisWeek && Array.isArray(data.weeklyIntakeThisWeek)) {
-          console.log('Setting weekly intake data:', data.weeklyIntakeThisWeek);
-          setWeeklyIntake(data.weeklyIntakeThisWeek);
-        } else {
-          console.log('No weeklyIntakeThisWeek in response, using empty array');
-          setWeeklyIntake([]);
+        if (weeklyData.weeklyIntake) {
+          setWeeklyIntake(weeklyData.weeklyIntake);
         }
         
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching intake data:', error);
         toast({
           title: "Error",
-          description: "Failed to load user data. Please try again.",
+          description: "Failed to load nutrition data. Please try again.",
           variant: "destructive"
         });
       } finally {
@@ -97,7 +96,7 @@ export default function Dashboard() {
       }
     };
     
-    fetchUserData();
+    fetchIntakeData();
   }, [userId, toast]);
   
   // Helper function to get day name from date string
@@ -111,27 +110,24 @@ export default function Dashboard() {
     const days = [];
     const today = new Date();
     
-    // Create a map of date to intake data for faster lookup
-    const intakeMap = new Map();
-    weeklyIntake.forEach(item => {
-      intakeMap.set(item.date, item);
-    });
-    
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      const dayData = intakeMap.get(dateStr);
+      const dayData = weeklyIntake.find(item => item.date === dateStr) || {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fats: 0,
+        fiber: 0,
+        water: 0,
+        date: dateStr
+      };
       
       days.push({
         date: dateStr,
         dayName: i === 0 ? 'Today' : getDayName(dateStr),
-        calories: dayData?.calories || 0,
-        protein: dayData?.protein || 0,
-        carbs: dayData?.carbs || 0,
-        fats: dayData?.fats || 0,
-        fiber: dayData?.fiber || 0,
-        water: dayData?.water || 0
+        ...dayData
       });
     }
     
@@ -296,10 +292,10 @@ export default function Dashboard() {
             <CardTitle className="text-lg text-card-foreground">Today's Progress</CardTitle>
             <CardDescription>Your main nutrition targets</CardDescription>
           </CardHeader>
-          <CardContent className="pt-0 pb-8">
-            <div className="grid grid-cols-2 gap-8 pt-2">
-              <div className="flex flex-col items-center space-y-3">
-                <Flame className="w-7 h-7 text-calories mb-1" />
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col items-center space-y-2">
+                <Flame className="w-6 h-6 text-calories" />
                 <NutritionRing
                   label="Calories"
                   value={todayIntake.calories}
@@ -308,8 +304,8 @@ export default function Dashboard() {
                   size="md"
                 />
               </div>
-              <div className="flex flex-col items-center space-y-3">
-                <Beef className="w-7 h-7 text-protein mb-1" />
+              <div className="flex flex-col items-center space-y-2">
+                <Beef className="w-6 h-6 text-protein" />
                 <NutritionRing
                   label="Protein"
                   value={todayIntake.protein}
@@ -318,8 +314,8 @@ export default function Dashboard() {
                   size="md"
                 />
               </div>
-              <div className="flex flex-col items-center space-y-3">
-                <Wheat className="w-7 h-7 text-fiber mb-1" />
+              <div className="flex flex-col items-center space-y-2">
+                <Wheat className="w-6 h-6 text-fiber" />
                 <NutritionRing
                   label="Fiber"
                   value={todayIntake.fiber}
@@ -328,8 +324,8 @@ export default function Dashboard() {
                   size="md"
                 />
               </div>
-              <div className="flex flex-col items-center space-y-3">
-                <Droplets className="w-7 h-7 text-water mb-1" />
+              <div className="flex flex-col items-center space-y-2">
+                <Droplets className="w-6 h-6 text-water" />
                 <NutritionRing
                   label="Water"
                   value={todayIntake.water}
@@ -347,80 +343,84 @@ export default function Dashboard() {
         <Card className="shadow-medium border-0 bg-card backdrop-blur-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-card-foreground">Weekly Intake</CardTitle>
-            <CardDescription>Your nutrition data for the past week</CardDescription>
+            <CardDescription>Last 7 days overview</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : weeklyIntake.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground">
-                No weekly data available. Start tracking your nutrition to see your progress.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-2 px-2">Date</th>
-                      <th className="text-right py-2 px-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <Flame className="w-3.5 h-3.5 text-calories" />
-                          <span>Calories</span>
+            <div className="space-y-3">
+              {isLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                lastSevenDays.map((dayData, index) => {
+                  const isToday = index === 6; // Last item is today
+                  const calories = Math.round(dayData.calories);
+                  const protein = Math.round(dayData.protein);
+                  const water = dayData.water.toFixed(1);
+                  
+                  return (
+                    <div 
+                      key={dayData.date} 
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                        isToday 
+                          ? 'bg-primary/10 border-primary/30 text-card-foreground' 
+                          : 'bg-muted/20 border-border/30 text-card-foreground'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <p className={`font-medium ${isToday ? 'text-primary' : 'text-card-foreground'}`}>
+                          {dayData.dayName} {isToday && '(Today)'}
+                        </p>
+                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Flame className="w-3.5 h-3.5 text-calories" />
+                            {calories} cal
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Beef className="w-3.5 h-3.5 text-protein" />
+                            {protein}g
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Droplets className="w-3.5 h-3.5 text-water" />
+                            {water}L
+                          </span>
                         </div>
-                      </th>
-                      <th className="text-right py-2 px-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <Beef className="w-3.5 h-3.5 text-protein" />
-                          <span>Protein</span>
+                      </div>
+                      {isToday && (
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Edit3 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Minus className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </th>
-                      <th className="text-right py-2 px-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <Droplets className="w-3.5 h-3.5 text-water" />
-                          <span>Water</span>
-                        </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {weeklyIntake.map((dayData, index) => {
-                      const date = new Date(dayData.date);
-                      const isToday = date.toDateString() === new Date().toDateString();
-                      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                      
-                      return (
-                        <tr 
-                          key={dayData.date}
-                          className={`border-b border-border/30 ${isToday ? 'bg-primary/5' : ''}`}
-                        >
-                          <td className="py-2 px-2 whitespace-nowrap">
-                            <div className="flex flex-col">
-                              <span className={`font-medium ${isToday ? 'text-primary' : ''}`}>
-                                {date.getDate()} {date.toLocaleString('default', { month: 'short' })}
-                              </span>
-                              <span className="text-xs text-muted-foreground">{dayName} {isToday && '(Today)'}</span>
-                            </div>
-                          </td>
-                          <td className="text-right py-2 px-2">
-                            {Math.round(dayData.calories)} cal
-                          </td>
-                          <td className="text-right py-2 px-2">
-                            {Math.round(dayData.protein)}g
-                          </td>
-                          <td className="text-right py-2 px-2">
-                            {Number(dayData.water || 0).toFixed(1)}L
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-sm border-t border-border shadow-strong">
+        <div className="max-w-md mx-auto px-4 py-3">
+          <div className="flex justify-between px-8">
+            <Button variant="ghost" size="sm" className="flex flex-col items-center gap-1 text-primary">
+              <Home className="w-5 h-5" />
+              <span className="text-xs">Home</span>
+            </Button>
+            <Link to="/profile">
+              <Button variant="ghost" size="sm" className="flex flex-col items-center gap-1 text-muted-foreground">
+                <User className="w-5 h-5" />
+                <span className="text-xs">Profile</span>
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
