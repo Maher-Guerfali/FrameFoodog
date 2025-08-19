@@ -76,9 +76,11 @@ export default function UsernameEntry() {
           description: "Loading your dashboard...",
         });
         
-        navigate(`/dashboard/${userData.user.id}`);
+        // Navigate to dashboard without the user ID in the URL
+        navigate('/dashboard');
       } else {
         // Create new user
+        console.log('Creating new user:', trimmedUsername);
         const createResponse = await fetch(`${API_URL}/api/users`, {
           method: 'POST',
           headers: {
@@ -90,7 +92,6 @@ export default function UsernameEntry() {
             age: 25,
             weight: "70.00",
             height: "175.00",
-            body_fat_percentage: "20.00",
             gender: "other",
             goals: "maintenance",
             allergies: ["none"],
@@ -100,10 +101,18 @@ export default function UsernameEntry() {
         });
         
         if (!createResponse.ok) {
-          throw new Error('Failed to create user');
+          const errorData = await createResponse.json().catch(() => ({}));
+          console.error('Failed to create user:', errorData);
+          throw new Error(errorData.error || 'Failed to create user');
         }
         
         const newUserResponse: UserResponse = await createResponse.json();
+        console.log('User created:', newUserResponse);
+        
+        if (!newUserResponse || !newUserResponse.user) {
+          throw new Error('Invalid response from server');
+        }
+        
         const newUser = newUserResponse.user;
         
         // Store user data in localStorage
@@ -116,13 +125,14 @@ export default function UsernameEntry() {
           description: "Let's set up your profile...",
         });
         
-        navigate("/onboarding");
+        // Redirect to onboarding without the user ID in the URL
+        navigate('/onboarding', { state: { newUser: true } });
       }
     } catch (error) {
-      console.error("Error checking user:", error);
+      console.error("Error in user flow:", error);
       toast({
         title: "Error",
-        description: "Failed to check user. Please try again.",
+        description: error.message || "An error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
