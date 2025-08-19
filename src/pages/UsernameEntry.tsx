@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Utensils, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import QRCodeScreen from "@/components/QRCodeScreen";
 
 // API base URL - replace with your actual API URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -34,6 +35,8 @@ interface UserResponse {
 export default function UsernameEntry() {
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { toast } = useToast();
@@ -71,13 +74,14 @@ export default function UsernameEntry() {
         localStorage.setItem("ff_user_id", userData.user.id);
         localStorage.setItem("ff_username", userData.user.username);
         
+        // Show QR code screen
+        setUserId(userData.user.id);
+        setShowQRCode(true);
+        
         toast({
           title: `Welcome back, ${userData.user.username}!`,
-          description: "Loading your dashboard...",
+          description: "Please sync your device",
         });
-        
-        // Navigate to dashboard without the user ID in the URL
-        navigate('/dashboard');
       } else {
         // Create new user
         console.log('Creating new user:', trimmedUsername);
@@ -140,59 +144,57 @@ export default function UsernameEntry() {
     }
   };
 
+  const handleProceed = () => {
+    navigate('/dashboard');
+  };
+
+  if (showQRCode && userId) {
+    return <QRCodeScreen userId={userId} onProceed={handleProceed} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
-      <div className="w-full max-w-sm animate-fade-in">
-        {/* App Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-full mb-4 shadow-medium">
-            <Utensils className="w-8 h-8 text-white" />
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <div className="flex items-center justify-center mb-4">
+            <Utensils className="h-8 w-8 mr-2 text-primary" />
+            <span className="text-2xl font-bold">Frame</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">FoodFrame</h1>
-          <p className="text-muted-foreground">Track your nutrition journey</p>
-        </div>
-
-        {/* Username Form */}
-        <Card className="shadow-medium border-0 bg-card/80 backdrop-blur-sm">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Welcome to FoodFrame</CardTitle>
-            <p className="text-sm text-muted-foreground text-center">
-              Enter your username to continue
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  type="text"
-                  placeholder="Your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="h-12 text-base border-border/50 focus:border-primary bg-background/50"
-                  disabled={isLoading}
-                />
-              </div>
-              
-              <Button
-                type="submit"
-                variant="hero"
-                size="lg"
-                className="w-full h-12"
-                disabled={!username.trim() || isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  "Continue"
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+          <CardTitle className="text-2xl text-center">
+            {isLoading ? 'Checking...' : 'Welcome to Frame'}
+          </CardTitle>
+          <p className="text-sm text-center text-muted-foreground">
+            {isLoading 
+              ? 'Checking your account...' 
+              : 'Enter your username to continue'}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                id="username"
+                placeholder="Enter your username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
+                autoComplete="username"
+                className="text-base h-12"
+              />
+            </div>
+            <Button type="submit" className="w-full h-12" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Please wait...
+                </>
+              ) : (
+                'Continue'
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
