@@ -40,6 +40,17 @@ export default function Dashboard() {
   // State for weekly intake data
   const [weeklyIntake, setWeeklyIntake] = useState<Array<IntakeData>>([]);
   
+  // Define types for API responses
+  interface UserApiResponse {
+    user: any;
+    dailyIntakeToday: any;
+    weeklyIntakeThisWeek: Array<IntakeData>;
+  }
+
+  interface WeeklyApiResponse {
+    weeklyIntake: Array<IntakeData>;
+  }
+
   // Fetch user's intake data
   useEffect(() => {
     const fetchIntakeData = async () => {
@@ -57,31 +68,40 @@ export default function Dashboard() {
         setIsLoading(true);
         const today = new Date().toISOString().split('T')[0];
         
-        // Fetch today's intake
-        const [todayResponse, weeklyResponse] = await Promise.all([
-          fetch(`${API_URL}/api/users/${userId}`),
-          fetch(`${API_URL}/api/users/${userId}/weekly`)
-        ]);
+        // Fetch user data which includes today's intake and weekly data
+        const response = await fetch(`${API_URL}/api/users/${userId}`);
         
-        if (!todayResponse.ok || !weeklyResponse.ok) {
-          throw new Error('Failed to fetch intake data');
+        if (!response.ok) {
+          throw new Error('Failed to fetch user data');
         }
         
-        const [todayData, weeklyData] = await Promise.all([
-          todayResponse.json(),
-          weeklyResponse.json()
-        ]);
+        const data: UserApiResponse = await response.json();
         
-        if (todayData.dailyIntakeToday) {
+        // Set today's intake if available
+        if (data.dailyIntakeToday) {
           setTodayIntake(prev => ({
             ...prev,
-            ...todayData.dailyIntakeToday,
+            ...data.dailyIntakeToday,
             date: today
           }));
         }
         
-        if (weeklyData.weeklyIntake) {
-          setWeeklyIntake(weeklyData.weeklyIntake);
+        // Set weekly intake if available from the main endpoint
+        if (data.weeklyIntakeThisWeek && data.weeklyIntakeThisWeek.length > 0) {
+          setWeeklyIntake(data.weeklyIntakeThisWeek);
+        } else {
+          // Fallback to weekly endpoint if no weekly data in main response
+          try {
+            const weeklyResponse = await fetch(`${API_URL}/api/users/${userId}/weekly`);
+            if (weeklyResponse.ok) {
+              const weeklyData: WeeklyApiResponse = await weeklyResponse.json();
+              if (weeklyData.weeklyIntake) {
+                setWeeklyIntake(weeklyData.weeklyIntake);
+              }
+            }
+          } catch (weeklyError) {
+            console.error('Error fetching weekly data:', weeklyError);
+          }
         }
         
       } catch (error) {
